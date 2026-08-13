@@ -4,6 +4,13 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 
 dotenv.config();
+console.log("Mongo URI check:", {
+  exists: !!process.env.MONGODB_URI,
+  startsCorrectly:
+    process.env.MONGODB_URI?.startsWith("mongodb://") ||
+    process.env.MONGODB_URI?.startsWith("mongodb+srv://"),
+  length: process.env.MONGODB_URI?.length,
+});
 
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
