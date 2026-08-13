@@ -1,9 +1,10 @@
 const express = require("express");
 
+const { createBooking } = require("../controllers/bookingController");
+
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.json({ message: "Bookings route is working" });
-});
+// Create a new booking
+router.post("/", createBooking);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function EventList() {
+function EventList({ onSelectEvent }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,6 +70,16 @@ function EventList() {
                 ? new Date(event.date).toLocaleString()
                 : "Not provided"}
             </p>
+
+            <button
+              onClick={() => onSelectEvent(event._id)}
+              style={{
+                padding: "10px 20px",
+                cursor: "pointer",
+              }}
+            >
+              View Details
+            </button>
           </div>
         ))
       )}

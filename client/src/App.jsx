@@ -2,9 +2,21 @@ import { useState } from "react";
 import EventMap from "./components/EventMap";
 import CreateEvent from "./components/CreateEvent";
 import EventList from "./components/EventList";
+import EventDetails from "./components/EventDetails";
 
 function App() {
   const [location, setLocation] = useState(null);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+
+  // Show event details
+  if (selectedEventId) {
+    return (
+      <EventDetails
+        eventId={selectedEventId}
+        onBack={() => setSelectedEventId(null)}
+      />
+    );
+  }
 
   return (
     <div>
@@ -23,7 +35,8 @@ function App() {
       )}
 
       <CreateEvent location={location} />
-      <EventList />
+
+      <EventList onSelectEvent={setSelectedEventId} />
     </div>
   );
 }
