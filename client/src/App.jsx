@@ -1,6 +1,7 @@
 import { useState } from "react";
 import EventMap from "./components/EventMap";
 import CreateEvent from "./components/CreateEvent";
+import EventList from "./components/EventList";
 
 function App() {
   const [location, setLocation] = useState(null);
@@ -22,6 +23,7 @@ function App() {
       )}
 
       <CreateEvent location={location} />
+      <EventList />
     </div>
   );
 }
