@@ -31,6 +31,35 @@ const createBooking = async (req, res) => {
   }
 };
 
+
+// Get bookings by email
+const getBookingsByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+      });
+    }
+
+    const bookings = await Booking.find({
+      email: email.toLowerCase(),
+    }).populate("event");
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Get bookings error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch bookings",
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   createBooking,
+  getBookingsByEmail,
 };

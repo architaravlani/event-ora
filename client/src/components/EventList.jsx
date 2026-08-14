@@ -5,83 +5,97 @@ function EventList({ onSelectEvent }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchEvents = async () => {
-    try {
-      const response = await fetch(
-        "https://eventora-server-i6mg.onrender.com/api/events"
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch events");
-      }
-
-      setEvents(data);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load events.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/events`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to fetch events");
+        }
+
+        setEvents(data);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load events.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchEvents();
   }, []);
 
   if (loading) {
-    return <p>Loading events...</p>;
+    return <p className="events-status">Loading events...</p>;
   }
 
   if (error) {
-    return <p>{error}</p>;
+    return <p className="events-status">{error}</p>;
   }
 
   return (
-    <div style={{ maxWidth: "700px", margin: "30px auto" }}>
-      <h2>Upcoming Events</h2>
+    <div className="event-list-container">
+      <div className="events-heading">
+        <div>
+          <h2>Upcoming Events</h2>
+          <p>Discover events happening around you.</p>
+        </div>
+
+        <span>{events.length} events found</span>
+      </div>
 
       {events.length === 0 ? (
-        <p>No events available yet.</p>
+        <div className="no-events">
+          <p>No events available yet.</p>
+        </div>
       ) : (
-        events.map((event) => (
-          <div
-            key={event._id}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              padding: "20px",
-              marginBottom: "15px",
-            }}
-          >
-            <h3>{event.title}</h3>
+        <div className="event-grid">
+          {events.map((event, index) => (
+            <article className="event-card" key={event._id}>
+              <div className={`event-image event-image-${index % 4}`}>
+                <span className="event-category">EVENT</span>
+              </div>
 
-            {event.description && <p>{event.description}</p>}
+              <div className="event-card-content">
+                <h3>{event.title}</h3>
 
-            <p>
-              <strong>Address:</strong>{" "}
-              {event.location?.address || "Not provided"}
-            </p>
+                <p className="event-date">
+                  📅{" "}
+                  {event.date
+                    ? new Date(event.date).toLocaleDateString()
+                    : "Date not provided"}
+                </p>
 
-            <p>
-              <strong>Date:</strong>{" "}
-              {event.date
-                ? new Date(event.date).toLocaleString()
-                : "Not provided"}
-            </p>
+                <p className="event-location">
+                  📍{" "}
+                  {event.location?.address || "Location not provided"}
+                </p>
 
-            <button
-              onClick={() => onSelectEvent(event._id)}
-              style={{
-                padding: "10px 20px",
-                cursor: "pointer",
-              }}
-            >
-              View Details
-            </button>
-          </div>
-        ))
+                {event.description && (
+                  <p className="event-description">
+                    {event.description}
+                  </p>
+                )}
+
+                <div className="event-card-bottom">
+                  <span>📍 Map location</span>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectEvent(event._id)}
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       )}
     </div>
   );

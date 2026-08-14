@@ -32,13 +32,17 @@ function CreateEvent({ location }) {
     };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/events`,  {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventData),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/events`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("eventoraToken")}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
 
       const data = await response.json();
 
@@ -59,94 +63,95 @@ function CreateEvent({ location }) {
   };
 
   return (
-    <div
-      style={{
-        maxWidth: "500px",
-        margin: "30px auto",
-        padding: "20px",
-        border: "1px solid #ddd",
-        borderRadius: "10px",
-      }}
-    >
-      <h2>Create Event</h2>
+    <div className="create-event-card">
+      <div className="create-event-title">
+        <h2>Create Event</h2>
+        <p>
+          Create and publish an event for your community.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Event Title *</label>
-          <br />
+      <form className="create-event-form" onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="event-title">Event Title *</label>
+
           <input
+            id="event-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter event title"
-            style={{ width: "100%", padding: "10px" }}
           />
         </div>
 
-        <br />
+        <div className="form-group">
+          <label htmlFor="event-description">Description</label>
 
-        <div>
-          <label>Description</label>
-          <br />
           <textarea
+            id="event-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe your event"
-            style={{ width: "100%", padding: "10px" }}
+            rows="4"
           />
         </div>
 
-        <br />
+        <div className="form-group">
+          <label htmlFor="event-address">Address *</label>
 
-        <div>
-          <label>Address *</label>
-          <br />
           <input
+            id="event-address"
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Example: Bhopal, Madhya Pradesh"
-            style={{ width: "100%", padding: "10px" }}
           />
         </div>
 
-        <br />
+        <div className="form-group">
+          <label htmlFor="event-date">Date & Time *</label>
 
-        <div>
-          <label>Date *</label>
-          <br />
           <input
+            id="event-date"
             type="datetime-local"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            style={{ width: "100%", padding: "10px" }}
           />
         </div>
 
-        <br />
-
         {location && (
-          <div>
-            <strong>Selected Location:</strong>
-            <p>
-              Latitude: {location.lat.toFixed(6)}
-              <br />
-              Longitude: {location.lng.toFixed(6)}
-            </p>
+          <div className="selected-location">
+            <div className="selected-location-title">
+              📍 Selected Location
+            </div>
+
+            <div className="coordinates">
+              <span>
+                Latitude: {location.lat.toFixed(6)}
+              </span>
+
+              <span>
+                Longitude: {location.lng.toFixed(6)}
+              </span>
+            </div>
           </div>
         )}
 
-        <button
-          type="submit"
-          style={{
-            padding: "10px 20px",
-            cursor: "pointer",
-          }}
-        >
+        <button className="create-event-button" type="submit">
           Create Event
         </button>
 
-        {message && <p>{message}</p>}
+        {message && (
+          <div
+            className={`create-event-message ${
+              message.includes("successfully")
+                ? "success"
+                : "error"
+            }`}
+          >
+            {message}
+          </div>
+        )}
       </form>
     </div>
   );

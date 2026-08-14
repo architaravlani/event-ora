@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   MapContainer,
@@ -14,7 +15,6 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
-// 🔴 Marker for saved events
 const eventIcon = L.icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIcon2x,
@@ -25,7 +25,6 @@ const eventIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-// 🔵 Marker for newly selected location
 const selectedIcon = L.icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
@@ -36,61 +35,68 @@ const selectedIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-// Handles clicking on the map
-function LocationSelector({ setLocation, setSelectedPosition }) {
+function LocationSelector({ onLocationSelected }) {
   useMapEvents({
-    click(e) {
-      const newLocation = {
-        lat: e.latlng.lat,
-        lng: e.latlng.lng,
+    click(event) {
+      const position = {
+        lat: event.latlng.lat,
+        lng: event.latlng.lng,
       };
 
-      setLocation(newLocation);
-      setSelectedPosition([e.latlng.lat, e.latlng.lng]);
+      console.log("MAP LOCATION SELECTED:", position);
+
+      onLocationSelected(position);
     },
   });
 
   return null;
 }
 
-function EventMap({ setLocation }) {
+function EventMap({
+  setLocation,
+  enableLocationSelection = false,
+}) {
   const [events, setEvents] = useState([]);
-
-  // 🔵 Currently selected location
   const [selectedPosition, setSelectedPosition] = useState(null);
 
-  // Get existing events from MongoDB
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/events`)
-      .then((response) => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/events`
+        );
+
         if (!response.ok) {
           throw new Error("Failed to fetch events");
         }
 
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Events received:", data);
+        const data = await response.json();
+
         setEvents(data);
-      })
-      .catch((error) => {
-        console.error("FETCH ERROR:", error);
-      });
+      } catch (error) {
+        console.error("FETCH EVENTS ERROR:", error);
+      }
+    };
+
+    fetchEvents();
   }, []);
 
+  const handleLocationSelected = (position) => {
+    setSelectedPosition([position.lat, position.lng]);
+
+    if (setLocation) {
+      setLocation(position);
+    }
+  };
+
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "500px",
-      }}
-    >
+    <div className="event-map">
       <MapContainer
         center={[23.2599, 77.4126]}
         zoom={13}
         style={{
           width: "100%",
-          height: "100%",
+          height: "500px",
         }}
       >
         <TileLayer
@@ -98,14 +104,15 @@ function EventMap({ setLocation }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Click map to select a new event location */}
-        <LocationSelector
-          setLocation={setLocation}
-          setSelectedPosition={setSelectedPosition}
-        />
+        {/* CLICK-TO-SELECT MODE */}
+        {enableLocationSelection && (
+          <LocationSelector
+            onLocationSelected={handleLocationSelected}
+          />
+        )}
 
-        {/* 🔵 Selected location marker */}
-        {selectedPosition && (
+        {/* BLUE SELECTED MARKER */}
+        {enableLocationSelection && selectedPosition && (
           <Marker
             position={selectedPosition}
             icon={selectedIcon}
@@ -118,12 +125,11 @@ function EventMap({ setLocation }) {
           </Marker>
         )}
 
-        {/* 🔴 Existing event markers from MongoDB */}
+        {/* EXISTING EVENT MARKERS */}
         {events.map((event) => {
           const latitude = Number(event.location?.latitude);
           const longitude = Number(event.location?.longitude);
 
-          // Ignore invalid locations
           if (
             !Number.isFinite(latitude) ||
             !Number.isFinite(longitude)
@@ -140,24 +146,18 @@ function EventMap({ setLocation }) {
               <Popup>
                 <strong>{event.title}</strong>
 
-                <br />
-
                 {event.description && (
                   <>
-                    {event.description}
                     <br />
+                    {event.description}
                   </>
                 )}
 
-                📍 {event.location?.address}
-
                 <br />
 
-                <strong>Latitude:</strong> {latitude}
-
-                <br />
-
-                <strong>Longitude:</strong> {longitude}
+                📍{" "}
+                {event.location?.address ||
+                  "Location not provided"}
 
                 {event.date && (
                   <>
@@ -176,3 +176,4 @@ function EventMap({ setLocation }) {
 }
 
 export default EventMap;
+
