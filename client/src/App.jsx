@@ -13,10 +13,8 @@ function App() {
   const [page, setPage] = useState("discover");
   const [location, setLocation] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
-
   const [darkMode, setDarkMode] = useState(true);
 
-  // Check existing login
   const [isLoggedIn, setIsLoggedIn] = useState(
     Boolean(localStorage.getItem("eventoraToken"))
   );
@@ -42,9 +40,13 @@ function App() {
   const goToAdmin = () => {
     setSelectedEventId(null);
 
-    // Admin/Create Event requires login
     if (!localStorage.getItem("eventoraToken")) {
       setPage("login");
+      return;
+    }
+
+    if (user?.role !== "admin") {
+      setPage("discover");
       return;
     }
 
@@ -71,12 +73,15 @@ function App() {
 
     setIsLoggedIn(true);
 
-    // After login, go directly to Admin
-    setPage("admin");
+    // Admin goes to Admin, normal user goes to Discover
+    if (data.user?.role === "admin") {
+      setPage("admin");
+    } else {
+      setPage("discover");
+    }
   };
 
   const handleRegister = (data) => {
-    // Register API also returns a token
     if (data?.token) {
       localStorage.setItem("eventoraToken", data.token);
     }
@@ -88,7 +93,12 @@ function App() {
 
     if (data?.token) {
       setIsLoggedIn(true);
-      setPage("admin");
+
+      if (data.user?.role === "admin") {
+        setPage("admin");
+      } else {
+        setPage("discover");
+      }
     } else {
       setPage("login");
     }
@@ -117,78 +127,80 @@ function App() {
 
   return (
     <div className={`app ${darkMode ? "dark-mode" : "light-mode"}`}>
-      {/* ================= NAVBAR ================= */}
+      {/* NAVBAR */}
       <nav className="navbar">
-        <div
-          className="logo"
-          onClick={goToDiscover}
-          role="button"
-          tabIndex={0}
-        >
-          <span className="logo-icon">✦</span>
-          <span>Eventora</span>
-        </div>
-
+       <button
+  className="logo"
+  onClick={goToDiscover}
+  type="button"
+  aria-label="Eventora Home"
+>
+  <img
+    src="/eventora-logo.png"
+    alt="Eventora"
+    className="eventora-logo"
+  />
+</button>
         <div className="nav-links">
-          {/* DISCOVER */}
           <button
             className={page === "discover" ? "active-nav" : ""}
             onClick={goToDiscover}
+            type="button"
           >
             Discover
           </button>
 
-          {/* MY BOOKINGS */}
           <button
             className={page === "bookings" ? "active-nav" : ""}
             onClick={goToBookings}
+            type="button"
           >
             My Bookings
           </button>
 
-          {/* ADMIN */}
           {isLoggedIn && user?.role === "admin" && (
-  <button
-    className={page === "admin" ? "active-nav" : ""}
-    onClick={goToAdmin}
-  >
-    Admin
-  </button>
-)}
+            <button
+              className={page === "admin" ? "active-nav" : ""}
+              onClick={goToAdmin}
+              type="button"
+            >
+              Admin
+            </button>
+          )}
         </div>
 
-        {/* RIGHT SIDE NAV */}
         <div className="nav-actions">
           {isLoggedIn ? (
             <>
               <span className="user-name">
-                {user?.name ? `Hi, ${user.name}` : "Logged In"}
+                Hi, {user?.name || "User"}
               </span>
 
               <button
-                type="button"
                 className="logout-button"
                 onClick={handleLogout}
+                type="button"
               >
                 Logout
               </button>
             </>
           ) : (
             <button
-              type="button"
               className="login-nav-button"
               onClick={goToLogin}
+              type="button"
             >
               Login
             </button>
           )}
 
-          {/* DARK / LIGHT MODE */}
           <button
             className="theme-button"
             onClick={() => setDarkMode((current) => !current)}
             title={
-              darkMode ? "Switch to light mode" : "Switch to dark mode"
+              darkMode
+                ? "Switch to light mode"
+                : "Switch to dark mode"
             }
             type="button"
           >
@@ -197,38 +209,112 @@ function App() {
         </div>
       </nav>
 
-      {/* ================= DISCOVER ================= */}
+      {/* DISCOVER */}
       {page === "discover" && (
         <>
           <section className="hero">
-            <div className="hero-badge">
-              ✦ Discover unforgettable experiences
-            </div>
+  <div className="hero-content">
 
-            <h1>
-              Find your next <span>event</span>, explore it on the map.
-            </h1>
+    <div className="hero-badge">
+      <span className="hero-badge-dot"></span>
+      Discover unforgettable experiences
+    </div>
 
-            <p>
-              Discover concerts, workshops, sports and amazing events
-              around you.
-            </p>
-          </section>
+    <h1>
+      Discover experiences
+      <br />
+      <span>worth remembering.</span>
+    </h1>
+
+    <p>
+      Find concerts, workshops, sports, meetups and amazing
+      events happening around you.
+    </p>
+
+    <div className="hero-actions">
+      <button
+        type="button"
+        className="hero-primary-button"
+        onClick={() => {
+          document
+            .querySelector(".events-section")
+            ?.scrollIntoView({
+              behavior: "smooth",
+            });
+        }}
+      >
+        Explore Events
+        <span>→</span>
+      </button>
+
+      <button
+        type="button"
+        className="hero-secondary-button"
+        onClick={goToBookings}
+      >
+        My Bookings
+      </button>
+    </div>
+
+  </div>
+
+  <div className="hero-decoration">
+    <div className="hero-glow hero-glow-one"></div>
+    <div className="hero-glow hero-glow-two"></div>
+
+    <div className="floating-card floating-card-one">
+      <span>🎵</span>
+      <div>
+        <strong>Live Music</strong>
+        <small>Discover events</small>
+      </div>
+    </div>
+
+    <div className="floating-card floating-card-two">
+      <span>📍</span>
+      <div>
+        <strong>Near You</strong>
+        <small>Find local events</small>
+      </div>
+    </div>
+
+    <div className="hero-orb">
+      <span>✦</span>
+    </div>
+  </div>
+</section>
 
           <section className="events-section">
+            <div className="section-heading discover-heading">
+              <div>
+                <h2>Explore Events</h2>
+                <p>Find something exciting to do next.</p>
+              </div>
+            </div>
+
             <EventList onSelectEvent={handleSelectEvent} />
           </section>
         </>
       )}
 
-      {/* ================= MY BOOKINGS ================= */}
+      {/* MY BOOKINGS */}
       {page === "bookings" && (
         <section className="bookings-section">
+          <div className="bookings-header">
+            <div className="hero-badge">✦ Your Events</div>
+            <h1>
+              My <span>Bookings</span>
+            </h1>
+            <p>
+              Keep track of the events you've booked.
+            </p>
+          </div>
+
           <MyBookings />
         </section>
       )}
 
-      {/* ================= LOGIN ================= */}
+      {/* LOGIN */}
       {page === "login" && (
         <Login
           onLogin={handleLogin}
@@ -236,7 +322,7 @@ function App() {
         />
       )}
 
-      {/* ================= REGISTER ================= */}
+      {/* REGISTER */}
       {page === "register" && (
         <Register
           onRegister={handleRegister}
@@ -244,13 +330,15 @@ function App() {
         />
       )}
 
-      {/* ================= ADMIN ================= */}
+      {/* ADMIN */}
       {page === "admin" && (
         <main className="admin-page">
           {!isLoggedIn ? (
             <section className="auth-required">
               <div className="auth-card">
-                <div className="hero-badge">🔐 Login Required</div>
+                <div className="hero-badge">
+                  🔐 Login Required
+                </div>
 
                 <h1>
                   Admin <span>Access</span>
@@ -264,8 +352,31 @@ function App() {
                 <button
                   type="button"
                   onClick={goToLogin}
+                  className="primary-button"
                 >
                   Login to Continue
+                </button>
+              </div>
+            </section>
+          ) : user?.role !== "admin" ? (
+            <section className="auth-required">
+              <div className="auth-card">
+                <div className="hero-badge">🚫 Access Restricted</div>
+
+                <h1>
+                  Admin <span>Only</span>
+                </h1>
+
+                <p>
+                  Your account does not have administrator access.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={goToDiscover}
+                  className="primary-button"
+                >
+                  Back to Discover
                 </button>
               </div>
             </section>
@@ -289,7 +400,6 @@ function App() {
               <section className="admin-location-section">
                 <div className="section-heading">
                   <h2>Choose Event Location</h2>
-
                   <p>
                     Search for a city or address, or click directly
                     on the map.
@@ -325,7 +435,7 @@ function App() {
         </main>
       )}
 
-      {/* ================= EVENT DETAILS ================= */}
+      {/* EVENT DETAILS */}
       {page === "details" && selectedEventId && (
         <section className="details-section">
           <EventDetails

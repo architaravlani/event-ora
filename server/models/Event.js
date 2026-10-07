@@ -19,17 +19,28 @@ const eventSchema = new mongoose.Schema(
       default: "",
     },
 
+    category: {
+      type: String,
+      enum: [
+        "Music",
+        "Sports",
+        "Workshops",
+        "Business",
+        "Art",
+        "Other",
+      ],
+      default: "Other",
+    },
+
     location: {
       address: {
         type: String,
         required: true,
       },
-
       latitude: {
         type: Number,
         required: true,
       },
-
       longitude: {
         type: Number,
         required: true,

@@ -24,8 +24,9 @@ function CreateEvent({ location, setLocation }) {
     }
 
     // Maximum image size: 2 MB
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Image size must be less than 2 MB.");
+    if (file.size > 1 * 1024 * 1024)  {
+     setError("Image size must be less than 1 MB.");
+     
       e.target.value = "";
       return;
     }
