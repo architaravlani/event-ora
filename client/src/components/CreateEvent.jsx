@@ -1,68 +1,41 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000";
+  import.meta.env.VITE_API_URL || "https://eventora-server-i6mg.onrender.com";
 
 function CreateEvent({ location, setLocation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Other");
   const [address, setAddress] = useState("");
   const [date, setDate] = useState("");
   const [image, setImage] = useState("");
-  const [message, setMessage] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  // Automatically get address from selected map location
-  useEffect(() => {
-    if (!location) return;
-
-    const fetchAddress = async () => {
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.lat}&lon=${location.lng}`
-        );
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-
-        if (data.display_name) {
-          setAddress(data.display_name);
-        }
-      } catch (error) {
-        console.error("REVERSE GEOCODING ERROR:", error);
-      }
-    };
-
-    fetchAddress();
-  }, [location]);
-
-  // Image upload
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
 
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setMessage("❌ Please select a valid image.");
+    if (!file) {
+      setImage("");
       return;
     }
 
-    // Keep image below 2 MB
+    // Maximum image size: 2 MB
     if (file.size > 2 * 1024 * 1024) {
-      setMessage("❌ Image must be smaller than 2 MB.");
+      setError("Image size must be less than 2 MB.");
+      e.target.value = "";
       return;
     }
+
+    setError("");
 
     const reader = new FileReader();
 
-    reader.onload = () => {
+    reader.onloadend = () => {
       setImage(reader.result);
-      setMessage("");
-    };
-
-    reader.onerror = () => {
-      setMessage("❌ Failed to read image.");
     };
 
     reader.readAsDataURL(file);
@@ -72,247 +45,277 @@ function CreateEvent({ location, setLocation }) {
     e.preventDefault();
 
     setMessage("");
+    setError("");
 
     if (!location) {
-      setMessage(
-        "❌ Please search for a location or click on the map first."
-      );
+      setError("Please select the event location on the map.");
       return;
     }
 
     if (!title.trim()) {
-      setMessage("❌ Please enter an event title.");
+      setError("Please enter an event title.");
       return;
     }
 
     if (!address.trim()) {
-      setMessage("❌ Please enter an event address.");
+      setError("Please enter the event address.");
       return;
     }
 
     if (!date) {
-      setMessage("❌ Please select an event date.");
+      setError("Please select the event date and time.");
       return;
     }
 
-    setLoading(true);
+    const token = localStorage.getItem("eventoraToken");
+
+    if (!token) {
+      setError("Please login before creating an event.");
+      return;
+    }
 
     const eventData = {
       title: title.trim(),
       description: description.trim(),
-      image: image || "",
+      category,
       location: {
         address: address.trim(),
         latitude: location.lat,
         longitude: location.lng,
       },
       date,
+      image,
     };
 
     try {
-      console.log("Sending event to:", `${API_URL}/api/events`);
+      setLoading(true);
 
       const response = await fetch(`${API_URL}/api/events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem(
-            "eventoraToken"
-          )}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(eventData),
       });
 
-      console.log("STATUS:", response.status);
-      console.log("STATUS TEXT:", response.statusText);
-
-      // IMPORTANT:
-      // Read as text first instead of response.json()
-      const responseText = await response.text();
-
-      console.log("SERVER RESPONSE:", responseText);
+      const text = await response.text();
 
       let data = {};
 
-      if (responseText.trim()) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error(
-            "SERVER RETURNED NON-JSON:",
-            responseText
-          );
-        }
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
       }
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
-            `Server error: ${response.status} ${response.statusText}`
+          data.message || "Failed to create event. Please try again."
         );
       }
 
-      setMessage("🎉 Event created successfully!");
+      setMessage("Event created successfully! 🎉");
 
-      // Clear form
+      // Reset form
       setTitle("");
       setDescription("");
+      setCategory("Other");
       setAddress("");
       setDate("");
       setImage("");
 
-      // Clear selected location
       if (setLocation) {
         setLocation(null);
       }
-    } catch (error) {
-      console.error("CREATE EVENT ERROR:", error);
 
-      setMessage(
-        "❌ " +
-          (error.message || "Failed to create event.")
-      );
+      // Reset file input
+      const fileInput = document.getElementById("event-image");
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
+    } catch (err) {
+      console.error("Create event error:", err);
+      setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="create-event-page">
-      <div className="create-event-container">
+    <div className="create-event-card">
+      <div className="create-event-header">
+        <div>
+          <span className="hero-badge">✦ Event Creation</span>
 
-        <div className="create-event-header">
-          <h1>Create Event</h1>
+          <h2>
+            Create a new <span>event</span>
+          </h2>
 
           <p>
-            Add your event details, image and exact location.
+            Add the details below to publish your event on Eventora.
           </p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit}>
+      {message && (
+        <div className="success-message">
+          ✓ {message}
+        </div>
+      )}
 
-          {/* TITLE */}
-          <div className="form-group">
-            <label>Event Title *</label>
+      {error && (
+        <div className="error-message">
+          ✕ {error}
+        </div>
+      )}
 
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter event title"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="create-event-form">
+        {/* TITLE */}
+        <div className="form-group">
+          <label htmlFor="event-title">
+            Event Title
+          </label>
 
-          {/* DESCRIPTION */}
-          <div className="form-group">
-            <label>Description</label>
+          <input
+            id="event-title"
+            type="text"
+            placeholder="Enter event title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={loading}
+          />
+        </div>
 
-            <textarea
-              value={description}
-              onChange={(e) =>
-                setDescription(e.target.value)
-              }
-              placeholder="Describe your event"
-              rows="4"
-            />
-          </div>
+        {/* DESCRIPTION */}
+        <div className="form-group">
+          <label htmlFor="event-description">
+            Description
+          </label>
 
-          {/* IMAGE */}
-          <div className="form-group">
-            <label>Event Image</label>
+          <textarea
+            id="event-description"
+            placeholder="Describe your event..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows="4"
+            disabled={loading}
+          />
+        </div>
 
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-            />
+        {/* CATEGORY */}
+        <div className="form-group">
+          <label htmlFor="event-category">
+            Event Category
+          </label>
 
-            {image && (
-              <div style={{ marginTop: "15px" }}>
-                <img
-                  src={image}
-                  alt="Event preview"
-                  style={{
-                    width: "100%",
-                    maxWidth: "400px",
-                    height: "220px",
-                    objectFit: "cover",
-                    borderRadius: "12px",
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* DATE */}
-          <div className="form-group">
-            <label>Date *</label>
-
-            <input
-              type="datetime-local"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-
-          {/* ADDRESS */}
-          <div className="form-group">
-            <label>Address *</label>
-
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Event address"
-            />
-          </div>
-
-          {/* SELECTED LOCATION */}
-          {location && (
-            <div
-              style={{
-                marginBottom: "20px",
-                padding: "15px",
-                borderRadius: "8px",
-                background: "rgba(50, 100, 255, 0.1)",
-              }}
-            >
-              <strong>📍 Selected Location</strong>
-
-              <div style={{ marginTop: "8px" }}>
-                Latitude: {location.lat.toFixed(6)}
-              </div>
-
-              <div>
-                Longitude: {location.lng.toFixed(6)}
-              </div>
-            </div>
-          )}
-
-          {/* SUBMIT */}
-          <button
-            className="create-event-button"
-            type="submit"
+          <select
+            id="event-category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
             disabled={loading}
           >
-            {loading ? "Creating Event..." : "Create Event"}
-          </button>
+            <option value="Music">🎵 Music</option>
+            <option value="Sports">🏆 Sports</option>
+            <option value="Workshops">💻 Workshops</option>
+            <option value="Business">💼 Business</option>
+            <option value="Art">🎨 Art</option>
+            <option value="Other">📌 Other</option>
+          </select>
+        </div>
 
-          {/* MESSAGE */}
-          {message && (
-            <div
-              className={`create-event-message ${
-                message.includes("successfully")
-                  ? "success"
-                  : "error"
-              }`}
-            >
-              {message}
+        {/* ADDRESS */}
+        <div className="form-group">
+          <label htmlFor="event-address">
+            Event Address
+          </label>
+
+          <input
+            id="event-address"
+            type="text"
+            placeholder="Enter event address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+
+        {/* DATE */}
+        <div className="form-group">
+          <label htmlFor="event-date">
+            Date & Time
+          </label>
+
+          <input
+            id="event-date"
+            type="datetime-local"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+
+        {/* IMAGE */}
+        <div className="form-group">
+          <label htmlFor="event-image">
+            Event Image
+          </label>
+
+          <input
+            id="event-image"
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            disabled={loading}
+          />
+
+          <small>
+            Upload a JPG, PNG or other image. Maximum size: 2 MB.
+          </small>
+
+          {image && (
+            <div className="image-preview">
+              <img
+                src={image}
+                alt="Event preview"
+              />
             </div>
           )}
+        </div>
 
-        </form>
-      </div>
+        {/* LOCATION STATUS */}
+        <div className="event-location-status">
+          {location ? (
+            <>
+              <strong>✓ Location Selected</strong>
+
+              <p>
+                Latitude: {location.lat.toFixed(6)}
+                <br />
+                Longitude: {location.lng.toFixed(6)}
+              </p>
+            </>
+          ) : (
+            <>
+              <strong>📍 Select a location</strong>
+
+              <p>
+                Click on the map above to choose the event location.
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* SUBMIT */}
+        <button
+          type="submit"
+          className="primary-button create-event-button"
+          disabled={loading}
+        >
+          {loading ? "Creating Event..." : "Create Event ✦"}
+        </button>
+      </form>
     </div>
   );
 }
