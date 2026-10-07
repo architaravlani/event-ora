@@ -5,98 +5,117 @@ function EventList({ onSelectEvent }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const API_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/events`
-        );
+        setLoading(true);
+        setError("");
 
-        const data = await response.json();
+        const response = await fetch(`${API_URL}/api/events`);
+        const text = await response.text();
 
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch events");
+        let data;
+
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("Server returned an invalid response.");
         }
 
-        setEvents(data);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load events.");
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to fetch events.");
+        }
+
+        setEvents(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("FETCH EVENTS ERROR:", error);
+        setError(error.message || "Unable to load events.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchEvents();
-  }, []);
+  }, [API_URL]);
 
   if (loading) {
-    return <p className="events-status">Loading events...</p>;
+    return (
+      <div className="events-status">
+        <p>Loading events...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <p className="events-status">{error}</p>;
+    return (
+      <div className="events-status">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="events-status">
+        <h3>No events available</h3>
+        <p>Create an event from the Admin section.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="event-list-container">
-      <div className="events-heading">
-        <div>
-          <h2>Upcoming Events</h2>
-          <p>Discover events happening around you.</p>
-        </div>
+    <div className="event-grid">
+      {events.map((event) => (
+        <article className="event-card" key={event._id}>
+          {event.image ? (
+            <img
+              src={event.image}
+              alt={event.title}
+              className="event-image"
+            />
+          ) : (
+            <div className="event-image-placeholder">
+              <span>✦</span>
+              <p>Eventora Event</p>
+            </div>
+          )}
 
-        <span>{events.length} events found</span>
-      </div>
+          <div className="event-card-content">
+            <div className="event-date">
+              {event.date
+                ? new Date(event.date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Date not available"}
+            </div>
 
-      {events.length === 0 ? (
-        <div className="no-events">
-          <p>No events available yet.</p>
-        </div>
-      ) : (
-        <div className="event-grid">
-          {events.map((event, index) => (
-            <article className="event-card" key={event._id}>
-              <div className={`event-image event-image-${index % 4}`}>
-                <span className="event-category">EVENT</span>
-              </div>
+            <h3>{event.title}</h3>
 
-              <div className="event-card-content">
-                <h3>{event.title}</h3>
+            <p className="event-description">
+              {event.description || "Join this amazing Eventora event."}
+            </p>
 
-                <p className="event-date">
-                  📅{" "}
-                  {event.date
-                    ? new Date(event.date).toLocaleDateString()
-                    : "Date not provided"}
-                </p>
+            {event.location?.address && (
+              <p className="event-location">
+                📍 {event.location.address}
+              </p>
+            )}
 
-                <p className="event-location">
-                  📍{" "}
-                  {event.location?.address || "Location not provided"}
-                </p>
-
-                {event.description && (
-                  <p className="event-description">
-                    {event.description}
-                  </p>
-                )}
-
-                <div className="event-card-bottom">
-                  <span>📍 Map location</span>
-
-                  <button
-                    type="button"
-                    onClick={() => onSelectEvent(event._id)}
-                  >
-                    View Details
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+            <button
+              type="button"
+              className="view-event-button"
+              onClick={() => onSelectEvent(event._id)}
+            >
+              View Details →
+            </button>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }

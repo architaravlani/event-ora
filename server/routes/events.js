@@ -6,13 +6,19 @@ const {
 } = require("../controllers/eventController");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
-// Get all events
+// Anyone can view events
 router.get("/", getEvents);
 
-// Create a new event
-router.post("/", authMiddleware, createEvent);
+// Only logged-in admins can create events
+router.post(
+  "/",
+  authMiddleware,
+  adminMiddleware,
+  createEvent
+);
 
 module.exports = router;

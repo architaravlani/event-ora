@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   MapContainer,
   TileLayer,
@@ -13,6 +14,9 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 // Leaflet marker fix
 const eventIcon = L.icon({
   iconUrl: markerIcon,
@@ -26,13 +30,42 @@ const eventIcon = L.icon({
 
 function EventDetails({ eventId, onBack }) {
   const [event, setEvent] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
   const [bookingMessage, setBookingMessage] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
+
+  // =========================
+  // LOAD LOGGED-IN USER
+  // =========================
+  useEffect(() => {
+    try {
+      const savedUser =
+        localStorage.getItem("eventoraUser");
+
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+
+        if (user?.name) {
+          setName(user.name);
+        }
+
+        if (user?.email) {
+          setEmail(user.email);
+        }
+      }
+    } catch (err) {
+      console.error(
+        "Unable to load saved user:",
+        err
+      );
+    }
+  }, []);
 
   // =========================
   // FETCH EVENT
@@ -40,14 +73,30 @@ function EventDetails({ eventId, onBack }) {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
+        setLoading(true);
+        setError("");
+
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/events`
+          `${API_URL}/api/events`
         );
 
-        const data = await response.json();
+        const text = await response.text();
+
+        let data;
+
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error(
+            "Server returned an invalid response."
+          );
+        }
 
         if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch events");
+          throw new Error(
+            data.message ||
+              "Failed to fetch events"
+          );
         }
 
         const selectedEvent = data.find(
@@ -60,14 +109,23 @@ function EventDetails({ eventId, onBack }) {
 
         setEvent(selectedEvent);
       } catch (err) {
-        console.error(err);
-        setError(err.message);
+        console.error(
+          "Event details error:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Failed to load event."
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEvent();
+    if (eventId) {
+      fetchEvent();
+    }
   }, [eventId]);
 
   // =========================
@@ -78,8 +136,20 @@ function EventDetails({ eventId, onBack }) {
 
     setBookingMessage("");
 
-    if (!name || !email) {
-      setBookingMessage("Please enter your name and email.");
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName || !cleanEmail) {
+      setBookingMessage(
+        "Please enter your name and email."
+      );
+      return;
+    }
+
+    if (!eventId) {
+      setBookingMessage(
+        "Event information is missing."
+      );
       return;
     }
 
@@ -87,7 +157,7 @@ function EventDetails({ eventId, onBack }) {
       setBookingLoading(true);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/bookings`,
+        `${API_URL}/api/bookings`,
         {
           method: "POST",
           headers: {
@@ -95,27 +165,49 @@ function EventDetails({ eventId, onBack }) {
           },
           body: JSON.stringify({
             event: eventId,
-            name,
-            email,
+            name: cleanName,
+            email: cleanEmail,
           }),
         }
       );
 
-      const data = await response.json();
+      const text = await response.text();
 
-      if (!response.ok) {
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
         throw new Error(
-          data.message || "Failed to create booking"
+          "Server returned an invalid response."
         );
       }
 
-      setBookingMessage("🎉 Booking created successfully!");
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to create booking"
+        );
+      }
 
-      setName("");
-      setEmail("");
+      setBookingMessage(
+        "🎉 Booking created successfully!"
+      );
+
+      // Keep the user's details instead of clearing them.
+      setName(cleanName);
+      setEmail(cleanEmail);
     } catch (err) {
-      console.error(err);
-      setBookingMessage("❌ " + err.message);
+      console.error(
+        "Booking error:",
+        err
+      );
+
+      setBookingMessage(
+        "❌ " +
+          (err.message ||
+            "Booking failed.")
+      );
     } finally {
       setBookingLoading(false);
     }
@@ -157,8 +249,13 @@ function EventDetails({ eventId, onBack }) {
   // =========================
   // EVENT LOCATION
   // =========================
-  const latitude = Number(event.location?.latitude);
-  const longitude = Number(event.location?.longitude);
+  const latitude = Number(
+    event.location?.latitude
+  );
+
+  const longitude = Number(
+    event.location?.longitude
+  );
 
   const hasValidCoordinates =
     Number.isFinite(latitude) &&
@@ -166,7 +263,6 @@ function EventDetails({ eventId, onBack }) {
 
   return (
     <div className="event-details-page">
-
       <div className="event-details-container">
 
         {/* BACK BUTTON */}
@@ -177,9 +273,19 @@ function EventDetails({ eventId, onBack }) {
           ← Back to Events
         </button>
 
+        {/* EVENT IMAGE */}
+        {event.image && (
+          <div className="event-details-image-wrapper">
+            <img
+              src={event.image}
+              alt={event.title}
+              className="event-details-image"
+            />
+          </div>
+        )}
+
         {/* EVENT HEADER */}
         <div className="event-details-header">
-
           <span className="event-category">
             EVENT
           </span>
@@ -191,28 +297,35 @@ function EventDetails({ eventId, onBack }) {
               {event.description}
             </p>
           )}
-
         </div>
 
         {/* EVENT INFORMATION */}
         <div className="event-info-grid">
 
           <div className="event-info-card">
-            <span className="event-info-icon">📅</span>
+            <span className="event-info-icon">
+              📅
+            </span>
 
             <div>
               <small>Date</small>
 
               <strong>
                 {event.date
-                  ? new Date(event.date).toLocaleString()
+                  ? new Date(
+                      event.date
+                    ).toLocaleString(
+                      "en-IN"
+                    )
                   : "Date not provided"}
               </strong>
             </div>
           </div>
 
           <div className="event-info-card">
-            <span className="event-info-icon">📍</span>
+            <span className="event-info-icon">
+              📍
+            </span>
 
             <div>
               <small>Location</small>
@@ -226,16 +339,15 @@ function EventDetails({ eventId, onBack }) {
 
         </div>
 
-        {/* =========================
-            EVENT MAP
-        ========================= */}
+        {/* EVENT MAP */}
         <section className="event-location-section">
 
           <div className="section-heading">
             <h2>Event Location</h2>
 
             <p>
-              Find exactly where this event is happening.
+              Find exactly where this event is
+              happening.
             </p>
           </div>
 
@@ -243,7 +355,10 @@ function EventDetails({ eventId, onBack }) {
             <div className="event-details-map">
 
               <MapContainer
-                center={[latitude, longitude]}
+                center={[
+                  latitude,
+                  longitude,
+                ]}
                 zoom={15}
                 scrollWheelZoom={true}
                 style={{
@@ -251,18 +366,22 @@ function EventDetails({ eventId, onBack }) {
                   height: "400px",
                 }}
               >
-
                 <TileLayer
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
                 <Marker
-                  position={[latitude, longitude]}
+                  position={[
+                    latitude,
+                    longitude,
+                  ]}
                   icon={eventIcon}
                 >
                   <Popup>
-                    <strong>{event.title}</strong>
+                    <strong>
+                      {event.title}
+                    </strong>
 
                     <br />
 
@@ -271,15 +390,14 @@ function EventDetails({ eventId, onBack }) {
                       "Event location"}
                   </Popup>
                 </Marker>
-
               </MapContainer>
 
             </div>
           ) : (
             <div className="map-unavailable">
               <p>
-                📍 Map location is not available for this
-                event.
+                📍 Map location is not
+                available for this event.
               </p>
             </div>
           )}
@@ -287,27 +405,28 @@ function EventDetails({ eventId, onBack }) {
           {hasValidCoordinates && (
             <div className="coordinates">
               <span>
-                Latitude: {latitude.toFixed(6)}
+                Latitude:{" "}
+                {latitude.toFixed(6)}
               </span>
 
               <span>
-                Longitude: {longitude.toFixed(6)}
+                Longitude:{" "}
+                {longitude.toFixed(6)}
               </span>
             </div>
           )}
 
         </section>
 
-        {/* =========================
-            BOOKING
-        ========================= */}
+        {/* BOOKING */}
         <section className="booking-section">
 
           <div className="section-heading">
             <h2>Book This Event</h2>
 
             <p>
-              Enter your details to reserve your spot.
+              Enter your details to reserve
+              your spot.
             </p>
           </div>
 
@@ -358,7 +477,6 @@ function EventDetails({ eventId, onBack }) {
           )}
 
         </section>
-
       </div>
     </div>
   );
