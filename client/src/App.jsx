@@ -1,6 +1,10 @@
-import { useState } from "react";
-import "./App.css";
 
+import { useEffect, useState } from "react";
+import "./App.css";
+import "./landing.css";
+
+import AdminEventManager from "./components/AdminEventManager";
+import AdminBookings from "./components/AdminBookings";
 import EventMap from "./components/EventMap";
 import CreateEvent from "./components/CreateEvent";
 import EventList from "./components/EventList";
@@ -8,12 +12,28 @@ import EventDetails from "./components/EventDetails";
 import MyBookings from "./components/MyBookings";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import HeroShowcase from "./components/HeroShowcase";
+import CountUp from "./components/CountUp";
+
+const SEARCH_HINTS = [
+  "Search concerts, comedy shows...",
+  "Search workshops near you...",
+  "Search by artist, city or venue...",
+  "Search sports and meetups...",
+];
 
 function App() {
   const [page, setPage] = useState("discover");
   const [location, setLocation] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [darkMode, setDarkMode] = useState(true);
+  const [adminTab, setAdminTab] = useState("events");
+  const [selectedCategory, setSelectedCategory] = useState("All Events");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [heroSearch, setHeroSearch] = useState("");
+  const [heroStats, setHeroStats] = useState(null);
+  const [hintIndex, setHintIndex] = useState(0);
 
   const [isLoggedIn, setIsLoggedIn] = useState(
     Boolean(localStorage.getItem("eventoraToken"))
@@ -27,21 +47,83 @@ function App() {
     }
   });
 
+  const categories = [
+    "All Events",
+    "Music",
+    "Sports",
+    "Workshops",
+    "Business",
+    "Art",
+    "Other",
+  ];
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark-mode", darkMode);
+    document.documentElement.classList.toggle("light-mode", !darkMode);
+  }, [darkMode]);
+
+  // Rotate the hero search placeholder automatically.
+  useEffect(() => {
+    if (page !== "discover") return undefined;
+
+    const timer = setInterval(
+      () => setHintIndex((current) => (current + 1) % SEARCH_HINTS.length),
+      3200
+    );
+    return () => clearInterval(timer);
+  }, [page]);
+
+  const scrollToEvents = () => {
+    window.requestAnimationFrame(() => {
+      document.getElementById("events")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  const handleHeroSearch = (event) => {
+    event.preventDefault();
+    setSearchTerm(heroSearch.trim());
+    setSelectedCategory("All Events");
+    scrollToEvents();
+  };
+
   const goToDiscover = () => {
     setSelectedEventId(null);
+    setSelectedEvent(null);
     setPage("discover");
   };
 
   const goToBookings = () => {
     setSelectedEventId(null);
+    setSelectedEvent(null);
     setPage("bookings");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToLogin = () => {
+    setSelectedEventId(null);
+    setSelectedEvent(null);
+    setPage("login");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToRegister = () => {
+    setSelectedEventId(null);
+    setSelectedEvent(null);
+    setPage("register");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const goToAdmin = () => {
     setSelectedEventId(null);
+    setSelectedEvent(null);
 
-    if (!localStorage.getItem("eventoraToken")) {
-      setPage("login");
+    const token = localStorage.getItem("eventoraToken");
+
+    if (!token) {
+      goToLogin();
       return;
     }
 
@@ -50,20 +132,14 @@ function App() {
       return;
     }
 
+    setAdminTab("events");
     setPage("admin");
-  };
-
-  const goToLogin = () => {
-    setSelectedEventId(null);
-    setPage("login");
-  };
-
-  const goToRegister = () => {
-    setSelectedEventId(null);
-    setPage("register");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleLogin = (data) => {
+    if (!data?.token) return;
+
     localStorage.setItem("eventoraToken", data.token);
 
     if (data.user) {
@@ -72,13 +148,9 @@ function App() {
     }
 
     setIsLoggedIn(true);
-
-    // Admin goes to Admin, normal user goes to Discover
-    if (data.user?.role === "admin") {
-      setPage("admin");
-    } else {
-      setPage("discover");
-    }
+    setPage(data.user?.role === "admin" ? "admin" : "discover");
+    setAdminTab("events");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleRegister = (data) => {
@@ -93,15 +165,13 @@ function App() {
 
     if (data?.token) {
       setIsLoggedIn(true);
-
-      if (data.user?.role === "admin") {
-        setPage("admin");
-      } else {
-        setPage("discover");
-      }
+      setPage(data.user?.role === "admin" ? "admin" : "discover");
+      setAdminTab("events");
     } else {
       setPage("login");
     }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleLogout = () => {
@@ -112,57 +182,78 @@ function App() {
     setUser(null);
     setLocation(null);
     setSelectedEventId(null);
+    setSelectedEvent(null);
+    setSelectedCategory("All Events");
     setPage("discover");
   };
 
-  const handleSelectEvent = (eventId) => {
-    setSelectedEventId(eventId);
+  const handleSelectEvent = (eventOrId, eventObject) => {
+    const event =
+      eventObject ||
+      (typeof eventOrId === "object" ? eventOrId : null);
+
+    const id =
+      typeof eventOrId === "object"
+        ? eventOrId?._id || eventOrId?.id
+        : eventOrId;
+
+    if (!id) {
+      console.error("Event ID is missing.");
+      return;
+    }
+
+    setSelectedEventId(id);
+    setSelectedEvent(event);
     setPage("details");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleBack = () => {
     setSelectedEventId(null);
+    setSelectedEvent(null);
     setPage("discover");
   };
 
   return (
     <div className={`app ${darkMode ? "dark-mode" : "light-mode"}`}>
-      {/* NAVBAR */}
       <nav className="navbar">
-       <button
-  className="logo"
-  onClick={goToDiscover}
-  type="button"
-  aria-label="Eventora Home"
->
-  <img
-    src="/eventora-logo.png"
-    alt="Eventora"
-    className="eventora-logo"
-  />
-</button>
+        <button
+          className="logo"
+          onClick={goToDiscover}
+          type="button"
+          aria-label="Eventora Home"
+        >
+          <img
+            src="/eventora-logo.png"
+            alt="Eventora"
+            className="eventora-logo"
+          />
+        </button>
+
         <div className="nav-links">
           <button
-            className={page === "discover" ? "active-nav" : ""}
-            onClick={goToDiscover}
             type="button"
+            className={
+              page === "discover" || page === "details" ? "active-nav" : ""
+            }
+            onClick={goToDiscover}
           >
             Discover
           </button>
 
           <button
+            type="button"
             className={page === "bookings" ? "active-nav" : ""}
             onClick={goToBookings}
-            type="button"
           >
             My Bookings
           </button>
 
           {isLoggedIn && user?.role === "admin" && (
             <button
+              type="button"
               className={page === "admin" ? "active-nav" : ""}
               onClick={goToAdmin}
-              type="button"
             >
               Admin
             </button>
@@ -177,127 +268,178 @@ function App() {
               </span>
 
               <button
+                type="button"
                 className="logout-button"
                 onClick={handleLogout}
-                type="button"
               >
                 Logout
               </button>
             </>
           ) : (
             <button
+              type="button"
               className="login-nav-button"
               onClick={goToLogin}
-              type="button"
             >
               Login
             </button>
           )}
 
           <button
+            type="button"
             className="theme-button"
             onClick={() => setDarkMode((current) => !current)}
-            title={
-              darkMode
-                ? "Switch to light mode"
-                : "Switch to dark mode"
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={
+              darkMode ? "Switch to light mode" : "Switch to dark mode"
             }
-            type="button"
           >
             {darkMode ? "☀" : "☾"}
           </button>
         </div>
       </nav>
 
-      {/* DISCOVER */}
       {page === "discover" && (
         <>
           <section className="hero">
-  <div className="hero-content">
-
-    <div className="hero-badge">
-      <span className="hero-badge-dot"></span>
-      Discover unforgettable experiences
-    </div>
-
-    <h1>
-      Discover experiences
-      <br />
-      <span>worth remembering.</span>
-    </h1>
-
-    <p>
-      Find concerts, workshops, sports, meetups and amazing
-      events happening around you.
-    </p>
-
-    <div className="hero-actions">
-      <button
-        type="button"
-        className="hero-primary-button"
-        onClick={() => {
-          document
-            .querySelector(".events-section")
-            ?.scrollIntoView({
-              behavior: "smooth",
-            });
-        }}
-      >
-        Explore Events
-        <span>→</span>
-      </button>
-
-      <button
-        type="button"
-        className="hero-secondary-button"
-        onClick={goToBookings}
-      >
-        My Bookings
-      </button>
-    </div>
-
-  </div>
-
-  <div className="hero-decoration">
-    <div className="hero-glow hero-glow-one"></div>
-    <div className="hero-glow hero-glow-two"></div>
-
-    <div className="floating-card floating-card-one">
-      <span>🎵</span>
-      <div>
-        <strong>Live Music</strong>
-        <small>Discover events</small>
-      </div>
-    </div>
-
-    <div className="floating-card floating-card-two">
-      <span>📍</span>
-      <div>
-        <strong>Near You</strong>
-        <small>Find local events</small>
-      </div>
-    </div>
-
-    <div className="hero-orb">
-      <span>✦</span>
-    </div>
-  </div>
-</section>
-
-          <section className="events-section">
-            <div className="section-heading discover-heading">
-              <div>
-                <h2>Explore Events</h2>
-                <p>Find something exciting to do next.</p>
-              </div>
+            <div className="hero-bg" aria-hidden="true">
+              <span className="hero-blob hero-blob-one" />
+              <span className="hero-blob hero-blob-two" />
+              <span className="hero-grid" />
             </div>
 
-            <EventList onSelectEvent={handleSelectEvent} />
+            <div className="hero-inner">
+              <div className="hero-content">
+                <div className="hero-badge">
+                  <span className="hero-badge-dot" />
+                  Your next great experience starts here
+                </div>
+
+                <h1>
+                  Discover experiences
+                  <br />
+                  <span>worth remembering.</span>
+                </h1>
+
+                <p>
+                  Concerts, comedy nights, workshops, sports and meetups —
+                  find what&apos;s happening around you and book your tickets
+                  in seconds.
+                </p>
+
+                <form className="hero-search" onSubmit={handleHeroSearch}>
+                  <svg
+                    className="hero-search-icon"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      cx="11"
+                      cy="11"
+                      r="7"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="m20 20-3.5-3.5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <input
+                    type="search"
+                    value={heroSearch}
+                    onChange={(event) => setHeroSearch(event.target.value)}
+                    placeholder={SEARCH_HINTS[hintIndex]}
+                    aria-label="Search events"
+                  />
+                  <button type="submit">Search</button>
+                </form>
+
+                <div className="hero-actions">
+                  <button
+                    type="button"
+                    className="hero-primary-button"
+                    onClick={scrollToEvents}
+                  >
+                    Explore Events <span>→</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="hero-secondary-button"
+                    onClick={goToBookings}
+                  >
+                    My Bookings
+                  </button>
+                </div>
+
+                {heroStats && heroStats.upcoming > 0 && (
+                  <dl className="hero-stats">
+                    <div>
+                      <dt>
+                        <CountUp value={heroStats.upcoming} />
+                      </dt>
+                      <dd>Upcoming events</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <CountUp value={Math.max(heroStats.categories, 1)} />
+                      </dt>
+                      <dd>Categories</dd>
+                    </div>
+                    <div>
+                      <dt>3</dt>
+                      <dd>Ticket tiers</dd>
+                    </div>
+                  </dl>
+                )}
+              </div>
+
+              <HeroShowcase
+                onSelectEvent={handleSelectEvent}
+                onStats={setHeroStats}
+              />
+            </div>
+          </section>
+
+          <section id="events" className="events-section">
+            <div className="section-heading discover-heading">
+              <span className="section-eyebrow">What&apos;s on</span>
+              <h2>Explore Events</h2>
+              <p>
+                {selectedCategory === "All Events"
+                  ? "Find something exciting to do next."
+                  : `Discover the best ${selectedCategory.toLowerCase()} events.`}
+              </p>
+            </div>
+
+            <EventList
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              search={searchTerm}
+              onSearchChange={setSearchTerm}
+              onSelectEvent={handleSelectEvent}
+            />
           </section>
         </>
       )}
 
-      {/* MY BOOKINGS */}
+      {page === "details" && selectedEventId && (
+        <section className="details-section">
+          <EventDetails
+            eventId={selectedEventId}
+            event={selectedEvent}
+            onBack={handleBack}
+          />
+        </section>
+      )}
+
       {page === "bookings" && (
         <section className="bookings-section">
           <div className="bookings-header">
@@ -305,50 +447,33 @@ function App() {
             <h1>
               My <span>Bookings</span>
             </h1>
-            <p>
-              Keep track of the events you've booked.
-            </p>
+            <p>Keep track of the events you've booked.</p>
           </div>
 
           <MyBookings />
         </section>
       )}
 
-      {/* LOGIN */}
       {page === "login" && (
-        <Login
-          onLogin={handleLogin}
-          onRegister={goToRegister}
-        />
+        <Login onLogin={handleLogin} onRegister={goToRegister} />
       )}
 
-      {/* REGISTER */}
       {page === "register" && (
-        <Register
-          onRegister={handleRegister}
-          onLogin={goToLogin}
-        />
+        <Register onRegister={handleRegister} onLogin={goToLogin} />
       )}
 
-      {/* ADMIN */}
       {page === "admin" && (
         <main className="admin-page">
           {!isLoggedIn ? (
             <section className="auth-required">
               <div className="auth-card">
-                <div className="hero-badge">
-                  🔐 Login Required
-                </div>
-
+                <div className="hero-badge">🔐 Login Required</div>
                 <h1>
                   Admin <span>Access</span>
                 </h1>
-
                 <p>
-                  Please login to your Eventora account before
-                  creating an event.
+                  Please log in to your Eventora account before managing events.
                 </p>
-
                 <button
                   type="button"
                   onClick={goToLogin}
@@ -362,15 +487,10 @@ function App() {
             <section className="auth-required">
               <div className="auth-card">
                 <div className="hero-badge">🚫 Access Restricted</div>
-
                 <h1>
                   Admin <span>Only</span>
                 </h1>
-
-                <p>
-                  Your account does not have administrator access.
-                </p>
-
+                <p>Your account does not have administrator access.</p>
                 <button
                   type="button"
                   onClick={goToDiscover}
@@ -383,66 +503,85 @@ function App() {
           ) : (
             <>
               <section className="admin-header">
-                <div className="hero-badge">
-                  ✦ Eventora Admin
-                </div>
-
+                <div className="hero-badge">✦ Eventora Admin</div>
                 <h1>
-                  Create a new <span>event</span>
+                  Admin <span>Dashboard</span>
                 </h1>
-
-                <p>
-                  Add your event details and choose its exact
-                  location on the map.
-                </p>
+                <p>Manage your events and monitor customer bookings.</p>
               </section>
 
-              <section className="admin-location-section">
-                <div className="section-heading">
-                  <h2>Choose Event Location</h2>
-                  <p>
-                    Search for a city or address, or click directly
-                    on the map.
-                  </p>
+              <div className="admin-dashboard-tabs">
+                <button
+                  type="button"
+                  className={`admin-tab ${
+                    adminTab === "events" ? "active" : ""
+                  }`}
+                  onClick={() => setAdminTab("events")}
+                >
+                  📅 Update Events
+                </button>
+
+                <button
+                  type="button"
+                  className={`admin-tab ${
+                    adminTab === "database" ? "active" : ""
+                  }`}
+                  onClick={() => setAdminTab("database")}
+                >
+                  🗄️ Booking Database
+                </button>
+              </div>
+
+              {adminTab === "events" && (
+                <div className="admin-events-section">
+                  <section className="admin-location-section">
+                    <div className="section-heading">
+                      <h2>Choose Event Location</h2>
+                      <p>
+                        Search for a city or address, or click directly on the
+                        map.
+                      </p>
+                    </div>
+
+                    <EventMap
+                      location={location}
+                      setLocation={setLocation}
+                      enableLocationSelection={true}
+                    />
+
+                    {location && (
+                      <div className="selected-location">
+                        <strong>✓ Location Selected</strong>
+                        <p>
+                          Latitude: {location.lat.toFixed(6)}
+                          <br />
+                          Longitude: {location.lng.toFixed(6)}
+                        </p>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="admin-create-section">
+                    <CreateEvent
+                      location={location}
+                      setLocation={setLocation}
+                    />
+                  </section>
+
+                  <section className="admin-existing-events">
+                    <AdminEventManager />
+                  </section>
                 </div>
+              )}
 
-                <EventMap
-                  setLocation={setLocation}
-                  enableLocationSelection={true}
-                />
-
-                {location && (
-                  <div className="selected-location">
-                    <strong>✓ Location Selected</strong>
-
-                    <p>
-                      Latitude: {location.lat.toFixed(6)}
-                      <br />
-                      Longitude: {location.lng.toFixed(6)}
-                    </p>
-                  </div>
-                )}
-              </section>
-
-              <section className="admin-create-section">
-                <CreateEvent
-                  location={location}
-                  setLocation={setLocation}
-                />
-              </section>
+              {adminTab === "database" && (
+                <div className="admin-database-section">
+                  <AdminBookings />
+                </div>
+              )}
             </>
           )}
         </main>
-      )}
-
-      {/* EVENT DETAILS */}
-      {page === "details" && selectedEventId && (
-        <section className="details-section">
-          <EventDetails
-            eventId={selectedEventId}
-            onBack={handleBack}
-          />
-        </section>
       )}
     </div>
   );

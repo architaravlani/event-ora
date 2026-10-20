@@ -1,7 +1,10 @@
+
 import { useState } from "react";
 
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://eventora-server-i6mg.onrender.com";
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://eventora-server-i6mg.onrender.com"
+).replace(/\/+$/, "");
 
 function CreateEvent({ location, setLocation }) {
   const [title, setTitle] = useState("");
@@ -10,33 +13,65 @@ function CreateEvent({ location, setLocation }) {
   const [address, setAddress] = useState("");
   const [date, setDate] = useState("");
   const [image, setImage] = useState("");
+  const [featured, setFeatured] = useState(false);
+
+  // Admin sets prices for this event
+  const [ticketPrices, setTicketPrices] = useState({
+    gold: "500",
+    premium: "1000",
+    royal: "2000",
+  });
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const handlePriceChange = (type, value) => {
+    setTicketPrices((previous) => ({
+      ...previous,
+      [type]: value,
+    }));
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
+
+    setError("");
+    setMessage("");
 
     if (!file) {
       setImage("");
       return;
     }
 
-    // Maximum image size: 2 MB
-    if (file.size > 1 * 1024 * 1024)  {
-     setError("Image size must be less than 1 MB.");
-     
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
       e.target.value = "";
+      setImage("");
       return;
     }
 
-    setError("");
+    if (file.size > 1 * 1024 * 1024) {
+      setError("Image size must be less than 1 MB.");
+      e.target.value = "";
+      setImage("");
+      return;
+    }
 
     const reader = new FileReader();
 
     reader.onloadend = () => {
-      setImage(reader.result);
+      if (typeof reader.result === "string") {
+        setImage(reader.result);
+      } else {
+        setError("Unable to read the image. Please try another file.");
+        setImage("");
+      }
+    };
+
+    reader.onerror = () => {
+      setError("Unable to read the image. Please try another file.");
+      setImage("");
     };
 
     reader.readAsDataURL(file);
@@ -44,14 +79,8 @@ function CreateEvent({ location, setLocation }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setMessage("");
     setError("");
-
-    if (!location) {
-      setError("Please select the event location on the map.");
-      return;
-    }
 
     if (!title.trim()) {
       setError("Please enter an event title.");
@@ -63,8 +92,28 @@ function CreateEvent({ location, setLocation }) {
       return;
     }
 
-    if (!date) {
-      setError("Please select the event date and time.");
+    if (!location) {
+      setError("Please select the event location on the map.");
+      return;
+    }
+
+    if (!date || new Date(date).getTime() <= Date.now()) {
+      setError("Please select a future date and time.");
+      return;
+    }
+
+    const prices = {
+      gold: Number(ticketPrices.gold),
+      premium: Number(ticketPrices.premium),
+      royal: Number(ticketPrices.royal),
+    };
+
+    if (
+      Object.values(prices).some(
+        (price) => !Number.isFinite(price) || price < 0
+      )
+    ) {
+      setError("Ticket prices must be valid, non-negative amounts.");
       return;
     }
 
@@ -86,6 +135,8 @@ function CreateEvent({ location, setLocation }) {
       },
       date,
       image,
+      featured,
+      ticketPrices: prices,
     };
 
     try {
@@ -100,12 +151,11 @@ function CreateEvent({ location, setLocation }) {
         body: JSON.stringify(eventData),
       });
 
-      const text = await response.text();
-
+      const responseText = await response.text();
       let data = {};
 
       try {
-        data = text ? JSON.parse(text) : {};
+        data = responseText ? JSON.parse(responseText) : {};
       } catch {
         data = {};
       }
@@ -118,24 +168,25 @@ function CreateEvent({ location, setLocation }) {
 
       setMessage("Event created successfully! 🎉");
 
-      // Reset form
       setTitle("");
       setDescription("");
       setCategory("Other");
       setAddress("");
       setDate("");
       setImage("");
+      setFeatured(false);
+      setTicketPrices({
+        gold: "500",
+        premium: "1000",
+        royal: "2000",
+      });
 
       if (setLocation) {
         setLocation(null);
       }
 
-      // Reset file input
       const fileInput = document.getElementById("event-image");
-
-      if (fileInput) {
-        fileInput.value = "";
-      }
+      if (fileInput) fileInput.value = "";
     } catch (err) {
       console.error("Create event error:", err);
       setError(err.message || "Something went wrong.");
@@ -149,36 +200,30 @@ function CreateEvent({ location, setLocation }) {
       <div className="create-event-header">
         <div>
           <span className="hero-badge">✦ Event Creation</span>
-
           <h2>
             Create a new <span>event</span>
           </h2>
-
           <p>
-            Add the details below to publish your event on Eventora.
+            Publish your event and configure its ticket prices.
           </p>
         </div>
       </div>
 
       {message && (
-        <div className="success-message">
+        <div className="success-message" role="status">
           ✓ {message}
         </div>
       )}
 
       {error && (
-        <div className="error-message">
+        <div className="error-message" role="alert">
           ✕ {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="create-event-form">
-        {/* TITLE */}
         <div className="form-group">
-          <label htmlFor="event-title">
-            Event Title
-          </label>
-
+          <label htmlFor="event-title">Event Title</label>
           <input
             id="event-title"
             type="text"
@@ -186,31 +231,24 @@ function CreateEvent({ location, setLocation }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={loading}
+            required
           />
         </div>
 
-        {/* DESCRIPTION */}
         <div className="form-group">
-          <label htmlFor="event-description">
-            Description
-          </label>
-
+          <label htmlFor="event-description">Description</label>
           <textarea
             id="event-description"
             placeholder="Describe your event..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows="4"
+            rows={4}
             disabled={loading}
           />
         </div>
 
-        {/* CATEGORY */}
         <div className="form-group">
-          <label htmlFor="event-category">
-            Event Category
-          </label>
-
+          <label htmlFor="event-category">Event Category</label>
           <select
             id="event-category"
             value={category}
@@ -226,12 +264,8 @@ function CreateEvent({ location, setLocation }) {
           </select>
         </div>
 
-        {/* ADDRESS */}
         <div className="form-group">
-          <label htmlFor="event-address">
-            Event Address
-          </label>
-
+          <label htmlFor="event-address">Event Address</label>
           <input
             id="event-address"
             type="text"
@@ -239,30 +273,71 @@ function CreateEvent({ location, setLocation }) {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             disabled={loading}
+            required
           />
         </div>
 
-        {/* DATE */}
         <div className="form-group">
-          <label htmlFor="event-date">
-            Date & Time
-          </label>
-
+          <label htmlFor="event-date">Date &amp; Time</label>
           <input
             id="event-date"
             type="datetime-local"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             disabled={loading}
+            required
           />
         </div>
 
-        {/* IMAGE */}
-        <div className="form-group">
-          <label htmlFor="event-image">
-            Event Image
-          </label>
+        <div className="ticket-pricing-section">
+          <h3>🎟️ Ticket Pricing</h3>
+          <p>Set the price per ticket for this event, in Indian rupees.</p>
 
+          <div className="form-group">
+            <label htmlFor="gold-price">🥇 Gold Ticket (₹)</label>
+            <input
+              id="gold-price"
+              type="number"
+              min="0"
+              step="1"
+              value={ticketPrices.gold}
+              onChange={(e) => handlePriceChange("gold", e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="premium-price">💎 Premium Ticket (₹)</label>
+            <input
+              id="premium-price"
+              type="number"
+              min="0"
+              step="1"
+              value={ticketPrices.premium}
+              onChange={(e) => handlePriceChange("premium", e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="royal-price">👑 Royal Ticket (₹)</label>
+            <input
+              id="royal-price"
+              type="number"
+              min="0"
+              step="1"
+              value={ticketPrices.royal}
+              onChange={(e) => handlePriceChange("royal", e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="event-image">Event Image</label>
           <input
             id="event-image"
             type="file"
@@ -270,27 +345,32 @@ function CreateEvent({ location, setLocation }) {
             onChange={handleImageChange}
             disabled={loading}
           />
-
-          <small>
-            Upload a JPG, PNG or other image. Maximum size: 2 MB.
-          </small>
+          <small>Maximum image size: 1 MB.</small>
 
           {image && (
             <div className="image-preview">
-              <img
-                src={image}
-                alt="Event preview"
-              />
+              <img src={image} alt="Event preview" />
             </div>
           )}
         </div>
 
-        {/* LOCATION STATUS */}
+        <label className="featured-event-option">
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(e) => setFeatured(e.target.checked)}
+            disabled={loading}
+          />
+          <span>
+            <strong>⭐ Feature this event</strong>
+            <small>Featured events can appear before other events.</small>
+          </span>
+        </label>
+
         <div className="event-location-status">
           {location ? (
             <>
               <strong>✓ Location Selected</strong>
-
               <p>
                 Latitude: {location.lat.toFixed(6)}
                 <br />
@@ -300,15 +380,11 @@ function CreateEvent({ location, setLocation }) {
           ) : (
             <>
               <strong>📍 Select a location</strong>
-
-              <p>
-                Click on the map above to choose the event location.
-              </p>
+              <p>Click on the map above to choose the event location.</p>
             </>
           )}
         </div>
 
-        {/* SUBMIT */}
         <button
           type="submit"
           className="primary-button create-event-button"

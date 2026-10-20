@@ -1,0 +1,217 @@
+
+.admin-event-manager {
+  width: min(1100px, 94%);
+  margin: 32px auto;
+  color: var(--text-color, inherit);
+}
+
+.admin-manager-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.admin-manager-heading h2 {
+  margin-bottom: 8px;
+}
+
+.admin-manager-heading p {
+  margin: 0;
+  opacity: 0.75;
+}
+
+.admin-manage-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-manage-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 14px;
+  background: var(--card-background, rgba(128, 128, 128, 0.08));
+}
+
+.admin-manage-card h3 {
+  margin: 0 0 8px;
+}
+
+.admin-manage-card p {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-manage-actions,
+.admin-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-event-manager button {
+  cursor: pointer;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.admin-manage-actions button,
+.admin-edit-actions button:first-child,
+.admin-manager-refresh {
+  background: #6655e8;
+  color: white;
+}
+
+.admin-manage-actions .admin-delete-button {
+  background: #c93646;
+  color: white;
+}
+
+.admin-event-edit-form {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+  padding: 24px;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 16px;
+  background: var(--card-background, rgba(128, 128, 128, 0.08));
+}
+
+.admin-event-edit-form h3,
+.admin-event-edit-form h4 {
+  margin: 0;
+}
+
+.admin-event-edit-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.admin-event-edit-form input:not([type="checkbox"]),
+.admin-event-edit-form textarea,
+.admin-event-edit-form select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border-color, #777);
+  border-radius: 8px;
+  background: var(--input-background, transparent);
+  color: inherit;
+  font: inherit;
+}
+
+.admin-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-featured-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.admin-featured-checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-edit-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.admin-edit-actions button:last-child {
+  background: #777;
+  color: white;
+}
+
+.admin-manager-error {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(201, 54, 70, 0.12);
+  color: #e05b68;
+}
+
+.admin-manager-success {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(30, 160, 90, 0.12);
+  color: #26945a;
+}
+
+@media (max-width: 650px) {
+  .admin-manage-card,
+  .admin-manager-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-recycle-bin {
+  margin-top: 36px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border-color, #444);
+}
+
+.admin-recycle-refresh {
+  margin-bottom: 16px;
+  padding: 9px 14px;
+  border: 1px solid var(--border-color, #777);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.admin-recycle-empty {
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border-color, #777);
+  border-radius: 12px;
+  opacity: 0.8;
+}
+
+.admin-recovery-time {
+  color: #26945a;
+  font-weight: 700;
+}
+
+.admin-recovery-expired {
+  color: #d64b58;
+  font-weight: 700;
+}
+
+.admin-manage-details {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-event-manager button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 650px) {
+  .admin-recycle-bin .admin-manager-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-manage-actions button {
+    max-width: 100%;
+  }
+}

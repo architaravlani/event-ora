@@ -1,3 +1,4 @@
+
 const express = require("express");
 const router = express.Router();
 
@@ -15,10 +16,10 @@ const {
 const authMiddleware = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 
-// Public: get all active events
+// GET all active events
 router.get("/", getEvents);
 
-// Admin: view deleted events
+// GET Recycle Bin events — admin only
 router.get(
   "/deleted",
   authMiddleware,
@@ -26,7 +27,7 @@ router.get(
   getDeletedEvents
 );
 
-// Admin: restore a deleted event
+// RESTORE an event from Recycle Bin — admin only
 router.patch(
   "/:id/restore",
   authMiddleware,
@@ -34,7 +35,7 @@ router.patch(
   restoreEvent
 );
 
-// Admin: permanently delete an event
+// PERMANENTLY delete an event from Recycle Bin — admin only
 router.delete(
   "/:id/permanent",
   authMiddleware,
@@ -42,7 +43,7 @@ router.delete(
   permanentlyDeleteEvent
 );
 
-// Admin: create an event
+// CREATE an event — admin only
 router.post(
   "/",
   authMiddleware,
@@ -50,7 +51,7 @@ router.post(
   createEvent
 );
 
-// Admin: update an event
+// UPDATE an event — admin only
 router.put(
   "/:id",
   authMiddleware,
@@ -58,7 +59,7 @@ router.put(
   updateEvent
 );
 
-// Admin: move an event to the recycle bin
+// SOFT DELETE an event — admin only
 router.delete(
   "/:id",
   authMiddleware,
@@ -66,7 +67,7 @@ router.delete(
   deleteEvent
 );
 
-// Admin: feature or unfeature an event
+// FEATURE / UNFEATURE an event — admin only
 router.patch(
   "/:id/feature",
   authMiddleware,

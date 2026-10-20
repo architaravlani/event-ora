@@ -1,39 +1,34 @@
 
 const Event = require("../models/Event");
 
-// GET all events
+// GET all active events: upcoming first, expired last.
 const getEvents = async (req, res) => {
   try {
-    const events = await Event.find({ deletedAt: null })
-  .populate("createdBy", "name email")
-  .lean();
+    const events = await Event.find({
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $exists: false } },
+      ],
+    })
+      .populate("createdBy", "name email")
+      .lean();
 
-    const now = new Date();
+    const now = Date.now();
 
     events.sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
       const expiredA = dateA < now;
       const expiredB = dateB < now;
 
-      // Upcoming events first
-      if (expiredA !== expiredB) {
-        return expiredA ? 1 : -1;
-      }
-
-      // Upcoming: nearest first
-      // Expired: most recently expired first
+      if (expiredA !== expiredB) return expiredA ? 1 : -1;
       return expiredA ? dateB - dateA : dateA - dateB;
     });
 
-    res.status(200).json(events);
+    return res.status(200).json(events);
   } catch (error) {
     console.error("Error fetching events:", error);
-
-    res.status(500).json({
-      message: "Failed to fetch events",
-    });
+    return res.status(500).json({ message: "Failed to fetch events" });
   }
 };
 
@@ -41,9 +36,7 @@ const getEvents = async (req, res) => {
 const createEvent = async (req, res) => {
   try {
     if (!req.user?.userId) {
-      return res.status(401).json({
-        message: "Please log in",
-      });
+      return res.status(401).json({ message: "Please log in" });
     }
 
     const {
@@ -54,32 +47,22 @@ const createEvent = async (req, res) => {
       date,
       image,
       featured,
+      isFeatured,
       ticketPrices,
     } = req.body;
 
-    if (!title?.trim() || !location?.address?.trim() || !date) {
+    if (
+      !title?.trim() ||
+      !location?.address?.trim() ||
+      location.latitude == null ||
+      location.longitude == null ||
+      !Number.isFinite(Number(location.latitude)) ||
+      !Number.isFinite(Number(location.longitude)) ||
+      !date ||
+      !Number.isFinite(new Date(date).getTime())
+    ) {
       return res.status(400).json({
-        message: "Title, address, and date are required",
-      });
-    }
-
-    if (!location.latitude || !location.longitude) {
-      // Latitude or longitude can legitimately be zero.
-      if (
-        location.latitude == null ||
-        location.longitude == null ||
-        !Number.isFinite(Number(location.latitude)) ||
-        !Number.isFinite(Number(location.longitude))
-      ) {
-        return res.status(400).json({
-          message: "Valid map coordinates are required",
-        });
-      }
-    }
-
-    if (Number.isNaN(new Date(date).getTime())) {
-      return res.status(400).json({
-        message: "Please provide a valid event date",
+        message: "Valid title, address, coordinates, and date are required",
       });
     }
 
@@ -95,7 +78,7 @@ const createEvent = async (req, res) => {
       )
     ) {
       return res.status(400).json({
-        message: "Ticket prices must be valid, non-negative amounts",
+        message: "Ticket prices must be valid non-negative amounts",
       });
     }
 
@@ -112,17 +95,18 @@ const createEvent = async (req, res) => {
       image: image || "",
       ticketPrices: prices,
       createdBy: req.user.userId,
-      isFeatured: Boolean(featured),
+      isFeatured: Boolean(isFeatured ?? featured),
+      deletedAt: null,
+      purgeAt: null,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Event created successfully",
       event,
     });
   } catch (error) {
     console.error("Create event error:", error);
-
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to create event",
       error: error.message,
     });
@@ -134,16 +118,14 @@ const toggleFeaturedEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
 
-    if (!event) {
-      return res.status(404).json({
-        message: "Event not found",
-      });
+    if (!event || event.deletedAt) {
+      return res.status(404).json({ message: "Active event not found" });
     }
 
     event.isFeatured = !event.isFeatured;
     await event.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: event.isFeatured
         ? "Event featured successfully"
@@ -154,17 +136,16 @@ const toggleFeaturedEvent = async (req, res) => {
     console.error("Feature event error:", error);
 
     if (error.name === "CastError") {
-      return res.status(400).json({
-        message: "Invalid event ID",
-      });
+      return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to update featured event",
     });
   }
 };
 
+// UPDATE event
 const updateEvent = async (req, res) => {
   try {
     const {
@@ -181,8 +162,8 @@ const updateEvent = async (req, res) => {
 
     const event = await Event.findById(req.params.id);
 
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
+    if (!event || event.deletedAt) {
+      return res.status(404).json({ message: "Active event not found" });
     }
 
     const nextTitle = title ?? event.title;
@@ -193,6 +174,8 @@ const updateEvent = async (req, res) => {
       typeof nextTitle !== "string" ||
       !nextTitle.trim() ||
       !nextLocation?.address?.trim() ||
+      nextLocation.latitude == null ||
+      nextLocation.longitude == null ||
       !Number.isFinite(Number(nextLocation.latitude)) ||
       !Number.isFinite(Number(nextLocation.longitude)) ||
       !Number.isFinite(new Date(nextDate).getTime())
@@ -229,9 +212,7 @@ const updateEvent = async (req, res) => {
         premium: Number(
           ticketPrices.premium ?? event.ticketPrices?.premium ?? 1000
         ),
-        royal: Number(
-          ticketPrices.royal ?? event.ticketPrices?.royal ?? 2000
-        ),
+        royal: Number(ticketPrices.royal ?? event.ticketPrices?.royal ?? 2000),
       };
 
       if (
@@ -260,13 +241,11 @@ const updateEvent = async (req, res) => {
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    return res.status(500).json({
-      message: "Failed to update event",
-    });
+    return res.status(500).json({ message: "Failed to update event" });
   }
 };
 
-
+// SOFT DELETE: move event to Recycle Bin for 24 hours
 const deleteEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -282,9 +261,7 @@ const deleteEvent = async (req, res) => {
     }
 
     const deletedAt = new Date();
-    const purgeAt = new Date(
-      deletedAt.getTime() + 24 * 60 * 60 * 1000
-    );
+    const purgeAt = new Date(deletedAt.getTime() + 24 * 60 * 60 * 1000);
 
     event.deletedAt = deletedAt;
     event.purgeAt = purgeAt;
@@ -292,7 +269,7 @@ const deleteEvent = async (req, res) => {
     await event.save();
 
     return res.status(200).json({
-      message: "Event moved to recycle bin. You can restore it within 24 hours.",
+      message: "Event moved to Recycle Bin for 24 hours",
       eventId: event._id,
       deletedAt,
       purgeAt,
@@ -305,46 +282,48 @@ const deleteEvent = async (req, res) => {
     }
 
     return res.status(500).json({
-      message: "Failed to move event to recycle bin",
+      message: "Failed to move event to Recycle Bin",
+      error: error.message,
     });
   }
 };
 
+// GET Recycle Bin
 const getDeletedEvents = async (req, res) => {
   try {
     const events = await Event.find({
-      deletedAt: { $ne: null },
+      deletedAt: { $type: "date" },
     })
       .populate("createdBy", "name email")
       .sort({ deletedAt: -1 })
       .lean();
 
-    res.status(200).json(events);
+    return res.status(200).json(events);
   } catch (error) {
     console.error("Get deleted events error:", error);
-    res.status(500).json({
-      message: "Failed to fetch deleted events",
+    return res.status(500).json({
+      message: "Failed to load deleted events",
+      error: error.message,
     });
   }
 };
 
+// RESTORE within 24 hours
 const restoreEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
 
     if (!event) {
-      return res.status(404).json({
-        message: "Event not found. It may have been permanently deleted.",
-      });
+      return res.status(404).json({ message: "Event not found" });
     }
 
     if (!event.deletedAt) {
       return res.status(400).json({
-        message: "This event is not in the recycle bin",
+        message: "This event is not in the Recycle Bin",
       });
     }
 
-    if (!event.purgeAt || event.purgeAt <= new Date()) {
+    if (!event.purgeAt || new Date(event.purgeAt) <= new Date()) {
       return res.status(410).json({
         message: "The 24-hour recovery period has expired",
       });
@@ -355,7 +334,7 @@ const restoreEvent = async (req, res) => {
 
     await event.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Event restored successfully",
       event,
     });
@@ -366,12 +345,11 @@ const restoreEvent = async (req, res) => {
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    res.status(500).json({
-      message: "Failed to restore event",
-    });
+    return res.status(500).json({ message: "Failed to restore event" });
   }
 };
 
+// PERMANENT DELETE
 const permanentlyDeleteEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -382,24 +360,27 @@ const permanentlyDeleteEvent = async (req, res) => {
 
     if (!event.deletedAt) {
       return res.status(400).json({
-        message: "Only deleted events can be permanently removed here",
+        message: "Only events in the Recycle Bin can be permanently deleted",
       });
     }
 
     await event.deleteOne();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Event permanently deleted",
     });
   } catch (error) {
     console.error("Permanent delete error:", error);
 
-    res.status(500).json({
+    if (error.name === "CastError") {
+      return res.status(400).json({ message: "Invalid event ID" });
+    }
+
+    return res.status(500).json({
       message: "Failed to permanently delete event",
     });
   }
 };
-
 
 module.exports = {
   getEvents,
@@ -407,7 +388,7 @@ module.exports = {
   toggleFeaturedEvent,
   updateEvent,
   getDeletedEvents,
-restoreEvent,
-permanentlyDeleteEvent,
+  restoreEvent,
+  permanentlyDeleteEvent,
   deleteEvent,
 };

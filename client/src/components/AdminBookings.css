@@ -1,0 +1,171 @@
+
+.admin-bookings {
+  width: min(1400px, 94%);
+  margin: 32px auto 60px;
+  color: var(--text-color, inherit);
+}
+
+.admin-bookings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.admin-db-eyebrow {
+  color: #9b87ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.admin-bookings-heading h2 {
+  margin: 10px 0;
+  font-size: clamp(25px, 4vw, 34px);
+}
+
+.admin-bookings-heading p {
+  opacity: 0.72;
+  margin: 0;
+}
+
+.admin-db-refresh,
+.admin-db-error button {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  background: #7057e8;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-db-refresh:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.admin-db-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-db-stat {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(145, 130, 200, 0.25);
+  border-radius: 16px;
+  background: var(--card-bg, rgba(120, 110, 160, 0.08));
+}
+
+.admin-db-stat span {
+  display: block;
+  font-size: 13px;
+  opacity: 0.72;
+  margin-bottom: 12px;
+}
+
+.admin-db-stat strong {
+  font-size: clamp(20px, 2.4vw, 29px);
+  overflow-wrap: anywhere;
+}
+
+.admin-db-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(145, 130, 200, 0.25);
+  border-radius: 14px;
+}
+
+.admin-db-table {
+  width: 100%;
+  min-width: 1250px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admin-db-table th,
+.admin-db-table td {
+  padding: 15px 14px;
+  border-bottom: 1px solid rgba(145, 130, 200, 0.18);
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.admin-db-table th {
+  background: rgba(112, 87, 232, 0.12);
+  font-weight: 800;
+}
+
+.admin-db-table tbody tr:hover {
+  background: rgba(112, 87, 232, 0.06);
+}
+
+.admin-db-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-db-payment {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.admin-db-payment.paid {
+  color: #16834a;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.admin-db-payment.unpaid {
+  color: #b77913;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.admin-db-payment.unknown {
+  color: #777;
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.admin-db-message,
+.admin-db-error {
+  margin: 20px 0;
+  padding: 28px;
+  border: 1px solid rgba(145, 130, 200, 0.25);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.admin-db-error {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.admin-db-error p {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .admin-db-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-bookings-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-db-stats {
+    gap: 10px;
+  }
+
+  .admin-db-stat {
+    padding: 15px;
+  }
+}
