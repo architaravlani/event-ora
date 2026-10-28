@@ -10,6 +10,7 @@ import CreateEvent from "./components/CreateEvent";
 import EventList from "./components/EventList";
 import EventDetails from "./components/EventDetails";
 import MyBookings from "./components/MyBookings";
+
 import Login from "./components/login.jsx";
 import Register from "./components/Register";
 import HeroShowcase from "./components/HeroShowcase";
